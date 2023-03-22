@@ -42,7 +42,7 @@ namespace Stride.Editor.Services
         {
             Logger.Info($"Opening asset {assetItem.Asset.GetType()} \"{assetItem.Id}\"...");
             if (editorType == null)
-                editorType = GetDefaultEditor(assetItem.Asset.GetType());
+                editorType = GetDefaultEditorForType(assetItem.Asset.GetType());
 
             Asset asset = GetOrOpenAsset(assetItem);
 
@@ -87,19 +87,35 @@ namespace Stride.Editor.Services
             {
                 return (IAssetEditor)ctor.Invoke(new object[] { asset, Services });
             }
-            throw new Exception($"Registered editor '{editorType.FullName}' does not have a constructor ({asset.GetType()} asset, {typeof(IServiceRegistry)} services)");
+
+            // Use this for Assets that have no registered plugin
+			ctor = editorType.GetConstructor(new[] { typeof(Asset), typeof(IServiceRegistry) });
+			return (IAssetEditor)ctor.Invoke(new object[] { asset, Services });
+
+            // we likely shouldnt throw an error but use the logger and provide a default instead
+			// throw new Exception($"Registered editor '{editorType.FullName}' does not have a constructor ({asset.GetType()} asset, {typeof(IServiceRegistry)} services)");
         }
 
-        private Type GetDefaultEditor(Type type)
+        private Type GetDefaultEditorForType(Type type)
         {
-            var entries = editorRegistry.Where(reg => reg.assetType == type).ToList();
+            var entries = editorRegistry.Where(reg => reg.assetType == type);
 
-            if (entries.Count == 0)
-                throw new InvalidOperationException($"No editor has been registered for asset type '{type}'.");
+            if (!entries.Any())
+			{
+                // log the missing editor type and grab the default unloadable editor
+				Logger.Error($"No editor has been registered for asset type '{type}'.");
+				return GetUnloadableEditor();
+			}
 
-            // The first registered editor is the default one
-            return entries.First().editorType;
-        }
+			// The first registered editor is the default one
+			return entries.First().editorType;
+		}
+
+        private Type GetUnloadableEditor()
+        {
+            return editorRegistry.First().editorType;
+
+		}
 
         /// <inheritdoc/>
         public void PushChange(Asset asset, Guid changeId)
