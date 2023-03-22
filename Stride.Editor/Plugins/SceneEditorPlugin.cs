@@ -1,5 +1,6 @@
 ﻿using Stride.Assets.Entities;
 using Stride.Core;
+using Stride.Core.Assets;
 using Stride.Editor.Design;
 using Stride.Editor.Design.SceneEditor;
 using Stride.Editor.Presentation;
@@ -12,11 +13,13 @@ namespace Stride.Editor.Plugins
         public void RegisterPlugin(IServiceRegistry services)
         {
             var viewRegistry = services.GetSafeServiceAs<ViewRegistry>();
+            viewRegistry.RegisterView<UnloadableEditor, UnloadableEditorView>();
             viewRegistry.RegisterView<SceneEditor, SceneEditorView>();
 
             var assetManager = services.GetSafeServiceAs<IAssetEditorRegistry>();
-            assetManager.RegisterAssetEditor<SceneAsset, SceneEditor>();
-        }
+            assetManager.RegisterAssetEditor<Asset, UnloadableEditor>();
+			assetManager.RegisterAssetEditor<SceneAsset, SceneEditor>();
+		}
 
         public void UnregisterPlugin(IServiceRegistry services)
         {
